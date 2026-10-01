@@ -1,0 +1,12 @@
+{
+  "name": "MediStaffix — Healthcare Staffing Platform",
+  "short_name": "MediStaffix",
+  "description": "Healthcare staffing ERP, CRM and HRM demonstration platform.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#123047",
+  "theme_color": "#123047",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

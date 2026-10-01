@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * MediStaffix design tokens.
+ * Brand palette is defined once here and consumed by every component, so the
+ * light and dark themes stay in sync.
+ */
+@theme {
+  --color-brand-50: #eef4f8;
+  --color-brand-100: #d6e4ee;
+  --color-brand-200: #adc9dd;
+  --color-brand-300: #7da8c6;
+  --color-brand-400: #4d87ae;
+  --color-brand-500: #2b6a91;
+  --color-brand-600: #1d5273;
+  --color-brand-700: #164259;
+  --color-brand-800: #123047;
+  --color-brand-900: #0d2233;
+  --color-brand-950: #071620;
+
+  --color-sea-50: #eef8fb;
+  --color-sea-100: #d5eef4;
+  --color-sea-200: #aedde8;
+  --color-sea-300: #7cc6d9;
+  --color-sea-400: #4aabc4;
+  --color-sea-500: #2b90ab;
+  --color-sea-600: #176b87;
+  --color-sea-700: #155a71;
+  --color-sea-800: #154b5d;
+  --color-sea-900: #163f4e;
+  --color-sea-950: #0b2731;
+
+  --color-mint-50: #eefdf8;
+  --color-mint-100: #d5f9ee;
+  --color-mint-200: #aef1de;
+  --color-mint-300: #7ae4c9;
+  --color-mint-400: #45cfae;
+  --color-mint-500: #20b89a;
+  --color-mint-600: #14937d;
+  --color-mint-700: #147565;
+  --color-mint-800: #155d53;
+  --color-mint-900: #154d46;
+  --color-mint-950: #062d2a;
+
+  --color-ink-50: #f5f8fa;
+  --color-ink-100: #e9eff3;
+  --color-ink-200: #d5e0e8;
+  --color-ink-300: #b3c6d2;
+  --color-ink-400: #8aa3b4;
+  --color-ink-500: #6b859a;
+  --color-ink-600: #556c7f;
+  --color-ink-700: #475868;
+  --color-ink-800: #3d4b58;
+  --color-ink-900: #182b3a;
+  --color-ink-950: #0f1c26;
+
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+
+  --radius-card: 14px;
+
+  --shadow-soft: 0 1px 2px rgba(18, 48, 71, 0.04), 0 4px 16px -6px rgba(18, 48, 71, 0.10);
+  --shadow-lift: 0 2px 4px rgba(18, 48, 71, 0.05), 0 12px 32px -12px rgba(18, 48, 71, 0.22);
+}
+
+:root {
+  --background: #f5f8fa;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2eaf0;
+  --border-strong: #cfdbe4;
+  --text: #182b3a;
+  --text-muted: #64798a;
+  --sidebar-bg: #0d2233;
+  --sidebar-text: #c6d7e2;
+  --sidebar-active: #164259;
+  --chart-grid: #e8eef3;
+}
+
+.dark {
+  --background: #08131c;
+  --surface: #0f1f2c;
+  --surface-2: #142836;
+  --border: #1e3646;
+  --border-strong: #2a4759;
+  --text: #e6eef4;
+  --text-muted: #8fa8b9;
+  --sidebar-bg: #060f17;
+  --sidebar-text: #9fb6c6;
+  --sidebar-active: #14364b;
+  --chart-grid: #1c3140;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-mint-200);
+  color: var(--color-brand-900);
+}
+
+.dark ::selection {
+  background: var(--color-mint-800);
+  color: var(--color-mint-50);
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Recharts theming via CSS variables */
+.recharts-cartesian-grid line {
+  stroke: var(--chart-grid);
+}
+.recharts-text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.recharts-default-tooltip {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-lift) !important;
+}
+
+@utility surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility text-muted {
+  color: var(--text-muted);
+}
+
+@utility bg-app {
+  background: var(--background);
+}
+
+@utility border-app {
+  border-color: var(--border);
+}
+
+@utility surface-2 {
+  background: var(--surface-2);
+}
+
+/* Focus ring used across interactive elements */
+@utility ring-focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  &:focus-visible {
+    outline-color: var(--color-mint-500);
+  }
+}
+
+@keyframes msx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: msx-fade-up 0.32s ease-out both;
+}
+
+@keyframes msx-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.16), transparent);
+  animation: msx-shimmer 1.4s infinite;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
