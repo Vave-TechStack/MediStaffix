@@ -1489,16 +1489,32 @@ export function buildSeedDatabase(): Database {
     hospitalId: portalHospital.id,
     createdAt: toISO(addDays(TODAY, -200)),
   };
+  /**
+   * The doctor demo account must land on a doctor whose own portal has content:
+   * an active deployment plus the shifts, attendance, leave and payslips that
+   * go with it. Picking the first doctor in the array can otherwise select one
+   * whose deployment has already completed, leaving every portal page empty.
+   */
+  const doctorPortalEmployee = (() => {
+    const deployed = new Set(
+      deployments.filter((d) => d.status === "Active" || d.status === "Confirmed").map((d) => d.employeeId)
+    );
+    return (
+      docEmployees.find((e) => deployed.has(e.id) && shifts.some((s) => s.employeeId === e.id)) ??
+      docEmployees.find((e) => deployed.has(e.id)) ??
+      docEmployees[0]
+    );
+  })();
   const doctorUser: User = {
     id: "USR-012",
-    name: docEmployees[0].name,
+    name: doctorPortalEmployee.name,
     email: `doctor@medistaffix.demo`,
     role: "Doctor",
     department: "Clinical Staffing",
-    phone: docEmployees[0].phone,
+    phone: doctorPortalEmployee.phone,
     passwordHint: DEMO_PASSWORD,
     status: "Active",
-    employeeId: docEmployees[0].id,
+    employeeId: doctorPortalEmployee.id,
     avatarColor: AVATAR_COLORS[11],
     createdAt: toISO(addDays(TODAY, -150)),
   };

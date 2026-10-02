@@ -13,6 +13,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { Database, User } from "./types";
 import { can, type Permission } from "./rbac";
 import { getDb } from "./store";
+import type { PortalScope } from "./resource-types";
 
 export const SESSION_COOKIE = "msx_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -133,6 +134,45 @@ export function scopeToPortal<T extends { hospitalId?: string; employeeId?: stri
   }
   if (user.role === "Doctor" && user.employeeId) {
     return rows.filter((r) => r.employeeId === user.employeeId);
+  }
+  return rows;
+}
+
+/**
+ * Portal scoping for collection endpoints.
+ *
+ * Scoping must be deny-by-default: a portal role is only ever shown rows it is
+ * entitled to, and any row that cannot be attributed to the user is withheld.
+ * A resource opts out explicitly with `portalScope: "none"`, so adding a new
+ * module cannot silently leak another hospital's records.
+ */
+export function scopeRowsToPortal<T extends Record<string, unknown>>(
+  user: User,
+  rows: T[],
+  portalScope: PortalScope | undefined,
+  db?: Database,
+  portalMatch?: (row: Record<string, unknown>, db: Database, user: User) => boolean
+): T[] {
+  if (portalScope === "none") return rows;
+  if (user.role === "Hospital Client") {
+    if (!user.hospitalId) return [];
+    const hospitalId = user.hospitalId;
+    return rows.filter((r) => {
+      // `hospitals` rows carry their own id rather than a hospitalId back-reference.
+      if ((r.hospitalId ?? r.id) === hospitalId) return true;
+      return db && portalMatch ? portalMatch(r, db, user) : false;
+    });
+  }
+  if (user.role === "Doctor") {
+    if (!user.employeeId) return [];
+    const employeeId = user.employeeId;
+    // A hospital-dimension resource still has to be reachable by a doctor when
+    // the resource can attribute a row to a person (their own deployment, say).
+    if (portalScope === "hospital" && !(db && portalMatch)) return [];
+    return rows.filter((r) => {
+      if (r.employeeId === employeeId || (r.id === employeeId && !r.employeeId)) return true;
+      return db && portalMatch ? portalMatch(r, db, user) : false;
+    });
   }
   return rows;
 }

@@ -74,6 +74,13 @@ export interface FilterDef {
   options?: FieldOption[] | ((db: Database) => FieldOption[]);
 }
 
+/**
+ * How portal roles are restricted for a resource.
+ * `"hospital"` / `"employee"` restrict by that dimension; `"none"` is the only
+ * way to publish a resource company-wide. Omit the field to infer by role.
+ */
+export type PortalScope = "hospital" | "employee" | "none";
+
 export interface ResourceDef {
   key: string;
   collection: keyof Database;
@@ -100,8 +107,21 @@ export interface ResourceDef {
   afterUpdate?: (record: Record<string, unknown>, prev: Record<string, unknown>, db: Database, user: User) => void;
   /** Prevent deletion when other records depend on this one. */
   blockDelete?: (record: Record<string, unknown>, db: Database) => string | null;
-  /** Rows visible to portal-scoped users. */
-  portalScope?: "hospital" | "employee" | "none";
+  /**
+   * Rows visible to portal-scoped users.
+   *
+   * Omitted means "infer": a Hospital Client sees only rows attributable to
+   * their hospital and a Doctor only rows attributable to them. Set `"none"`
+   * only for company-wide data every authenticated user may read.
+   */
+  portalScope?: PortalScope;
+  /**
+   * Resolve whether a row belongs to a portal user. Used for records that are
+   * linked indirectly (documents point at a hospital, contract or employee
+   * rather than carrying the id themselves). Returning true keeps the row;
+   * returning false withholds it. Applied before the generic portal filter.
+   */
+  portalMatch?: (row: Record<string, unknown>, db: Database, user: User) => boolean;
   /** Detail route template, e.g. `/crm/hospitals/${id}`. */
   detailHref?: (id: string) => string;
   /** Extra per-row actions rendered by the resource table. */

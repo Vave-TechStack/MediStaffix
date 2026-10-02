@@ -753,7 +753,10 @@ export const RESOURCES: Record<string, ResourceDef> = {
     ],
     searchFields: ["deploymentCode", "designation"],
     titleField: "deploymentCode",
+    // A deployment belongs to a hospital, but a doctor portal needs to find the
+    // placement they hold, so the doctor is matched on employeeId instead.
     portalScope: "hospital",
+    portalMatch: (row, _db, user) => Boolean(user.employeeId) && row.employeeId === user.employeeId,
     defaults: (db) => {
       const n = db.deployments.length + 1;
       return {
@@ -1307,6 +1310,29 @@ export const RESOURCES: Record<string, ResourceDef> = {
     description: "Central document register with categorisation, access control and expiry tracking.",
     view: "documents:view",
     manage: "documents:manage",
+    // A document has no hospitalId of its own; resolve its owner so a portal
+    // account only sees documents belonging to its own hospital or employee.
+    portalMatch: (row, db, user) => {
+      const ownerId = String(row.ownerId ?? "");
+      if (!ownerId) return false;
+      const ownerType = String(row.ownerType ?? "");
+      if (ownerType === "Hospital") return ownerId === user.hospitalId;
+      if (ownerType === "Employee") {
+        const emp = db.employees.find((e) => e.id === ownerId);
+        return Boolean(emp && user.employeeId && emp.id === user.employeeId);
+      }
+      if (ownerType === "Contract") {
+        return db.contracts.some((c) => c.id === ownerId && c.hospitalId === user.hospitalId);
+      }
+      if (ownerType === "Invoice" || ownerType === "Payslip") {
+        return db.invoices.some((i) => i.id === ownerId && i.hospitalId === user.hospitalId);
+      }
+      if (ownerType === "Deployment") {
+        return db.deployments.some((d) => d.id === ownerId && d.hospitalId === user.hospitalId);
+      }
+      if (ownerType === "Candidate" || ownerType === "Expense" || ownerType === "System") return false;
+      return false;
+    },
     fields: [
       { name: "name", label: "Document Name", type: "text", required: true, inTable: true, searchable: true, span: 2 },
       { name: "category", label: "Category", type: "select", required: true, options: opts(DOCUMENT_CATEGORIES), inTable: true },

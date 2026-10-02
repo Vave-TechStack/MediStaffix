@@ -43,6 +43,21 @@ export async function GET(_request: Request, ctx: { params: Promise<{ key: strin
     .map((f) => ({ field: f.field, label: f.label, options: resolveOptions(f.options, db) }))
     .filter((f) => f.options.length > 0);
 
+  /**
+   * Lookup rosters power the create/edit form's dropdowns. A portal account must
+   * not receive the whole company roster here: that would bypass the scoping
+   * applied to the record lists and expose other hospitals and employees.
+   */
+  const isPortal = user.role === "Hospital Client" || user.role === "Doctor";
+  const hospitals = isPortal ? db.hospitals.filter((h) => h.id === user.hospitalId) : db.hospitals;
+  const employeePool = isPortal
+    ? db.employees.filter(
+        (e) =>
+          (user.role === "Doctor" && e.id === user.employeeId) ||
+          db.deployments.some((d) => d.hospitalId === user.hospitalId && d.employeeId === e.id)
+      )
+    : db.employees;
+
   return NextResponse.json({
     key: resource.key,
     collection: resource.collection,
@@ -69,14 +84,14 @@ export async function GET(_request: Request, ctx: { params: Promise<{ key: strin
     })),
     filters,
     rowsAsCounts: {
-      hospitals: db.hospitals.length,
-      employees: db.employees.length,
+      hospitals: hospitals.length,
+      employees: employeePool.length,
     },
     lookups: {
-      hospitals: db.hospitals.map((h) => ({ value: h.id, label: h.name })),
-      doctors: db.employees.filter((e) => e.doctorProfile).map((e) => ({ value: e.id, label: `${e.name} — ${e.doctorProfile!.specialisation}` })),
-      employees: db.employees.map((e) => ({ value: e.id, label: e.name })),
-      designations: [...new Set(db.employees.map((e) => e.designation))].map((d) => ({ value: d, label: d })),
+      hospitals: hospitals.map((h) => ({ value: h.id, label: h.name })),
+      doctors: employeePool.filter((e) => e.doctorProfile).map((e) => ({ value: e.id, label: `${e.name} — ${e.doctorProfile!.specialisation}` })),
+      employees: employeePool.map((e) => ({ value: e.id, label: e.name })),
+      designations: [...new Set(employeePool.map((e) => e.designation))].map((d) => ({ value: d, label: d })),
     },
   });
 }

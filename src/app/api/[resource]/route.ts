@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { can } from "@/lib/rbac";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, scopeRowsToPortal } from "@/lib/auth";
 import { getResource } from "@/lib/resources";
 import { buildZodSchema } from "@/lib/resource-types";
 import { getDb, mutate, newId, notify, recordActivity, recordAudit } from "@/lib/store";
@@ -66,13 +66,9 @@ function matchesFilters(row: Record<string, unknown>, filters: Record<string, st
 function visibleRows(db: Database, user: User, resourceKey: string) {
   const resource = getResource(resourceKey)!;
   const collection = db[resource.collection] as unknown as Record<string, unknown>[];
-  if (resource.portalScope === "hospital" && user.role === "Hospital Client" && user.hospitalId) {
-    return collection.filter((r) => (r as { hospitalId?: string }).hospitalId === user.hospitalId);
-  }
-  if (resource.portalScope === "employee" && user.role === "Doctor" && user.employeeId) {
-    return collection.filter((r) => (r as { employeeId?: string }).employeeId === user.employeeId);
-  }
-  return collection;
+  // Deny by default: portal roles are restricted unless a resource explicitly
+  // declares itself company-wide, so a new module cannot leak records.
+  return scopeRowsToPortal(user, collection, resource.portalScope, db, resource.portalMatch);
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ resource: string }> }) {

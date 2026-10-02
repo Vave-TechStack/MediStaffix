@@ -80,6 +80,37 @@ async function main() {
       body: JSON.stringify({ invoiceNo: "HACK-001", hospitalId: "HSP-0001", billingPeriod: "2026-01", invoiceDate: "2026-01-01", dueDate: "2026-01-31", status: "Draft" }),
     });
     check("client cannot create an invoice", create.status === 403, `status=${create.status}`);
+
+    // Regression: the hospital list and the metadata lookups must be scoped too.
+    if (hospitals.status === 200) {
+      check(
+        "client sees only their own hospital",
+        hospitals.body.rows.length === 1,
+        `${hospitals.body.rows.length} row(s)`
+      );
+    }
+
+    const shifts = await get("/api/shifts?pageSize=200");
+    if (shifts.status === 200 && hospitals.status === 200) {
+      const ownHospital = hospitals.body.rows[0]?.id;
+      const foreign = (shifts.body.rows ?? []).filter((s) => s.hospitalId && s.hospitalId !== ownHospital);
+      check("client shifts are scoped to their hospital", foreign.length === 0, `${foreign.length} row(s) out of scope`);
+    }
+
+    const meta = await get("/api/resources/hospitals");
+    if (meta.status === 200) {
+      const lookups = meta.body?.lookups ?? {};
+      check("client lookup roster is scoped", (lookups.hospitals ?? []).length <= 1, `${(lookups.hospitals ?? []).length} hospital(s) exposed`);
+      const employeeTotal = Number(meta.body?.rowsAsCounts?.employees ?? 0);
+      check("client employee roster is scoped", employeeTotal <= 25, `${employeeTotal} employee(s) exposed`);
+    }
+
+    // Regression: the demo role switcher must not let a portal role self-promote.
+    const escalate = await get("/api/auth/switch", {
+      method: "POST",
+      body: JSON.stringify({ userId: "USR-001" }),
+    });
+    check("client cannot switch to super admin", escalate.status === 403, `status=${escalate.status}`);
   }
 
   /* ----------------------------- doctor ----------------------------- */
@@ -89,6 +120,29 @@ async function main() {
     const get = client(doc.cookie);
     const shifts = await get("/api/shifts");
     check("doctor can list own shifts", shifts.status === 200, `status=${shifts.status}`);
+    const selfEmployeeId = (() => {
+      const pays = shifts.body?.rows?.[0]?.employeeId ?? null;
+      return pays;
+    })();
+    if (shifts.status === 200 && selfEmployeeId) {
+      const foreign = (shifts.body.rows ?? []).filter((s) => s.employeeId && s.employeeId !== selfEmployeeId);
+      check("doctor shifts are scoped to themself", foreign.length === 0, `${foreign.length} row(s) out of scope`);
+      check("doctor portal has shifts to show", (shifts.body.rows ?? []).length > 0, `${(shifts.body.rows ?? []).length} row(s)`);
+    }
+
+    const deployments = await get("/api/deployments?pageSize=200");
+    if (deployments.status === 200 && selfEmployeeId) {
+      const foreign = (deployments.body.rows ?? []).filter((d) => d.employeeId && d.employeeId !== selfEmployeeId);
+      check("doctor deployments are scoped to themself", foreign.length === 0, `${foreign.length} row(s) out of scope`);
+      check("doctor portal has a deployment to show", (deployments.body.rows ?? []).length > 0, `${(deployments.body.rows ?? []).length} row(s)`);
+    }
+
+    // Regression: a doctor must not be able to self-promote via the demo switcher.
+    const escalate = await get("/api/auth/switch", {
+      method: "POST",
+      body: JSON.stringify({ userId: "USR-001" }),
+    });
+    check("doctor cannot switch to super admin", escalate.status === 403, `status=${escalate.status}`);
 
     const employees = await get("/api/employees");
     check("doctor cannot list the employee register", employees.status === 403, `status=${employees.status}`);
